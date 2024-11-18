@@ -1,0 +1,177 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       Int    @id @default(autoincrement())
+  email    String @unique
+  password String
+  role     Role?  @default(MEMBER)
+
+  profile       Profile?
+  category      Category[]
+  product       Product[]
+  cart          Cart[]
+  conversations Conversation[] @relation("UserConversations")
+  messages      Message[]      @relation("UserMessages")
+  Conversation  Conversation?
+
+  @@map("user")
+}
+
+model Profile {
+  id       Int           @id @default(autoincrement())
+  username String        @unique
+  phone    Int?
+  gender   Gender?
+  address  String?
+  image    ImageProfile?
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id])
+
+  @@unique([userId])
+  @@map("profile")
+}
+
+model Conversation {
+  id        Int       @id @default(autoincrement())
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  messages  Message[]
+
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  adminId Int
+  admin   User @relation("UserConversations", fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@map("conversation")
+}
+
+model Message {
+  id        Int      @id @default(autoincrement())
+  content   String
+  createdAt DateTime @default(now())
+
+  senderId Int
+  sender   User @relation("UserMessages", fields: [senderId], references: [id], onDelete: Cascade)
+
+  conversationId Int
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@map("message")
+}
+
+model Category {
+  id           Int    @id @default(autoincrement())
+  categoryName String
+
+  product Product[]
+
+  userId Int?
+  user   User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("category")
+}
+
+model Product {
+  id          Int            @id @default(autoincrement())
+  productName String
+  productDesc String
+  price       Int
+  Qty         Int
+  image       ImageProduct[]
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  categoryId Int
+  category   Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  CartItem   CartItem[]
+  Cart       Cart[]
+
+  @@map("product")
+}
+
+model Cart {
+  id        Int        @id @default(autoincrement())
+  status    CartStatus @default(ACTIVE)
+  createdAt DateTime   @default(now())
+
+  cartItem    CartItem[]
+  totalAmount Float      @default(0)
+
+  userId Int
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  productId Int?
+  Product   Product? @relation(fields: [productId], references: [id])
+
+  @@map("cart")
+}
+
+model CartItem {
+  id       Int @id @default(autoincrement())
+  quantity Int @default(1)
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  cartId Int
+  Cart   Cart @relation(fields: [cartId], references: [id], onDelete: Cascade)
+
+  @@map("cart_item")
+}
+
+model ImageProduct {
+  id  Int    @id @default(autoincrement())
+  url String
+
+  productId Int
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("imgproduct")
+}
+
+model ImageProfile {
+  id  Int    @id @default(autoincrement())
+  url String @default("https://i.pinimg.com/736x/8f/b2/ba/8fb2bae4938fb58ea89b4c5a00613eb2.jpg")
+
+  profileId Int     @unique
+  profile   Profile @relation(fields: [profileId], references: [id])
+
+  @@map("imgprofile")
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum Role {
+  ADMIN
+  MEMBER
+}
+
+enum CartStatus {
+  ACTIVE
+  COMPLETED
+}
+
+enum TransactionStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
